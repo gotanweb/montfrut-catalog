@@ -283,16 +283,16 @@ document.addEventListener('DOMContentLoaded', function () {
               <div class="cart-item-title">${item.title}</div>
               ${item.optionsText ? `<div class="cart-item-options">${item.optionsText}</div>` : ''}
               <div class="d-flex align-items-center mt-2">
-                <button class="btn btn-sm btn-outline-secondary me-2" onclick="changeCartQuantity('${key}', -1)">-</button>
+                <button class="btn btn-sm btn-outline-secondary me-2 cart-decrease" data-key="${key}">-</button>
                 <span class="me-2">${item.quantity}</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="changeCartQuantity('${key}', 1)">+</button>
+                <button class="btn btn-sm btn-outline-secondary cart-increase" data-key="${key}">+</button>
               </div>
             </div>
             <div class="col-2">
               <div class="cart-item-price">$${subtotal.toFixed(2)}</div>
             </div>
             <div class="col-1">
-              <button class="cart-item-remove" onclick="removeFromCart('${key}')">×</button>
+              <button class="cart-item-remove" data-key="${key}">×</button>
             </div>
           </div>
         </div>
@@ -301,29 +301,74 @@ document.addEventListener('DOMContentLoaded', function () {
 
     cartItemsContainer.innerHTML = html;
     modalCartTotal.textContent = `$${total.toFixed(2)}`;
+
+    // Agregar event listeners a los botones recién creados
+    addCartEventListeners();
   }
 
-  // Funciones globales para el carrito
-  window.changeCartQuantity = function(key, change) {
-    if (cart[key]) {
-      cart[key].quantity += change;
-      if (cart[key].quantity <= 0) {
+  // Función separada para agregar event listeners del carrito
+  function addCartEventListeners() {
+    // Botones de disminuir cantidad
+    document.querySelectorAll('.cart-decrease').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const key = this.dataset.key;
+        if (cart[key]) {
+          cart[key].quantity -= 1;
+          if (cart[key].quantity <= 0) {
+            delete cart[key];
+          }
+          localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+          updateFloatingCart();
+          updateCartModal();
+          validateTerms();
+        }
+      });
+    });
+
+    // Botones de aumentar cantidad
+    document.querySelectorAll('.cart-increase').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const key = this.dataset.key;
+        if (cart[key]) {
+          cart[key].quantity += 1;
+          localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+          updateFloatingCart();
+          updateCartModal();
+          validateTerms();
+        }
+      });
+    });
+
+    // Botones de eliminar producto
+    document.querySelectorAll('.cart-item-remove').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const key = this.dataset.key;
         delete cart[key];
-      }
-      localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+        localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+        updateFloatingCart();
+        updateCartModal();
+        validateTerms();
+      });
+    });
+  }
+
+  // Función para vaciar el carrito completamente
+  function emptyCart() {
+    if (confirm('Are you sure you want to empty your cart?')) {
+      cart = {};
+      localStorage.removeItem('montfrut_cart');
       updateFloatingCart();
       updateCartModal();
       validateTerms();
     }
-  };
+  }
 
-  window.removeFromCart = function(key) {
-    delete cart[key];
-    localStorage.setItem('montfrut_cart', JSON.stringify(cart));
-    updateFloatingCart();
-    updateCartModal();
-    validateTerms();
-  };
+  // Event listener para el botón Empty Cart
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'empty-cart-btn') {
+      emptyCart();
+    }
+  });
 
   // Abrir modal del carrito
   document.getElementById('openCartModal').addEventListener('click', () => {

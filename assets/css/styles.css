@@ -35,6 +35,7 @@ h1, h5 {
 
 .hero-image img {
   height: 100%;
+  width: 100%;
   object-fit: cover;
 }
 
@@ -51,13 +52,13 @@ h1, h5 {
 }
 
 .hero-logo {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   object-fit: cover;
   border-radius: 50%;
   border: 3px solid white;
   background-color: white;
-  padding: 5px;
+  padding: 8px;
 }
 
 .hero-title {
@@ -288,7 +289,7 @@ h1, h5 {
 
 .option-choice {
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
   border: 1px solid var(--mint-aqua);
@@ -409,8 +410,8 @@ h1, h5 {
   }
   
   .hero-logo {
-    width: 60px;
-    height: 60px;
+    width: 90px;
+    height: 90px;
   }
   
   .hero-title {

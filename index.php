@@ -165,6 +165,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="text-muted">Order Items</span>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="empty-cart-btn">
+            <i class="fas fa-trash"></i> Empty Cart
+          </button>
+        </div>
+        
         <div id="cart-items"></div>
         <div class="cart-total-section p-3 mt-3">
           <h4 class="text-center mb-0">Total: <span id="modal-cart-total">$0.00</span></h4>

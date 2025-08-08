@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentProduct = null;
   let currentProductOptions = {};
 
-  // Cargar carrito guardado
-  const savedCart = JSON.parse(localStorage.getItem('montfrut_cart') || '{}');
-  cart = { ...savedCart };
+  // Cargar carrito guardado (comentado para evitar errores de localStorage)
+  // const savedCart = JSON.parse(localStorage.getItem('montfrut_cart') || '{}');
+  // cart = { ...savedCart };
   updateFloatingCart();
 
   /* ---------------- FILTRADO ---------------- */
@@ -66,6 +66,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Inicializar filtros
   applyFilters();
+
+  /* ---------------- FUNCIONES AUXILIARES PARA CLAVES DE CARRITO ---------------- */
+  function generateCartKey(productId, options) {
+    // Generar una clave segura sin caracteres especiales
+    if (!options || Object.keys(options).length === 0) {
+      return productId;
+    }
+    // Crear una representación simple de las opciones
+    const optionsStr = Object.entries(options)
+      .map(([key, value]) => `${key}-${value}`)
+      .join('_');
+    return `${productId}__${optionsStr}`;
+  }
+
+  function escapeHtml(unsafe) {
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
 
   /* ---------------- MODAL DE PRODUCTO ---------------- */
   function openProductModal(productId) {
@@ -208,8 +230,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const quantity = parseInt(document.getElementById('product-quantity').textContent);
     
-    // Crear clave única para el producto con opciones
-    const cartKey = `${currentProduct.id}_${JSON.stringify(currentProductOptions)}`;
+    // Crear clave única para el producto con opciones usando la nueva función
+    const cartKey = generateCartKey(currentProduct.id, currentProductOptions);
     
     // Agregar al carrito
     if (cart[cartKey]) {
@@ -226,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function () {
       };
     }
 
-    localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+    // localStorage.setItem('montfrut_cart', JSON.stringify(cart));
     updateFloatingCart();
     
     // Cerrar modal
@@ -255,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  /* ---------------- MODAL DEL CARRITO ---------------- */
+  /* ---------------- MODAL DEL CARRITO - IMPLEMENTACIÓN CORREGIDA ---------------- */
   function updateCartModal() {
     const cartItemsContainer = document.getElementById('cart-items');
     const modalCartTotal = document.getElementById('modal-cart-total');
@@ -272,9 +294,10 @@ document.addEventListener('DOMContentLoaded', function () {
     Object.entries(cart).forEach(([key, item]) => {
       const subtotal = item.price * item.quantity;
       total += subtotal;
+      const safeKey = escapeHtml(key);
 
       html += `
-        <div class="cart-item">
+        <div class="cart-item" data-cart-key="${safeKey}">
           <div class="row align-items-center">
             <div class="col-2">
               <img src="${item.image}" alt="${item.title}" class="cart-item-image">
@@ -283,16 +306,16 @@ document.addEventListener('DOMContentLoaded', function () {
               <div class="cart-item-title">${item.title}</div>
               ${item.optionsText ? `<div class="cart-item-options">${item.optionsText}</div>` : ''}
               <div class="d-flex align-items-center mt-2">
-                <button class="btn btn-sm btn-outline-secondary me-2 cart-decrease" data-key="${key}">-</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary me-2 cart-decrease" data-key="${safeKey}">-</button>
                 <span class="me-2">${item.quantity}</span>
-                <button class="btn btn-sm btn-outline-secondary cart-increase" data-key="${key}">+</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary cart-increase" data-key="${safeKey}">+</button>
               </div>
             </div>
             <div class="col-2">
               <div class="cart-item-price">$${subtotal.toFixed(2)}</div>
             </div>
             <div class="col-1">
-              <button class="cart-item-remove" data-key="${key}">×</button>
+              <button type="button" class="cart-item-remove" data-key="${safeKey}">×</button>
             </div>
           </div>
         </div>
@@ -301,72 +324,73 @@ document.addEventListener('DOMContentLoaded', function () {
 
     cartItemsContainer.innerHTML = html;
     modalCartTotal.textContent = `$${total.toFixed(2)}`;
-
-    // Agregar event listeners a los botones recién creados
-    addCartEventListeners();
   }
 
-  // Función separada para agregar event listeners del carrito
-  function addCartEventListeners() {
-    // Botones de disminuir cantidad
-    document.querySelectorAll('.cart-decrease').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const key = this.dataset.key;
-        if (cart[key]) {
-          cart[key].quantity -= 1;
-          if (cart[key].quantity <= 0) {
-            delete cart[key];
-          }
-          localStorage.setItem('montfrut_cart', JSON.stringify(cart));
-          updateFloatingCart();
-          updateCartModal();
-          validateTerms();
+  // Event delegation para el modal del carrito
+  document.addEventListener('click', function(e) {
+    // Solo procesar clicks dentro del contenedor del carrito
+    if (!e.target.closest('#cart-items')) {
+      return;
+    }
+    
+    // Buscar el botón más cercano con la clase correspondiente
+    const decreaseBtn = e.target.closest('.cart-decrease');
+    const increaseBtn = e.target.closest('.cart-increase');
+    const removeBtn = e.target.closest('.cart-item-remove');
+    
+    if (decreaseBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = decreaseBtn.getAttribute('data-key');
+      if (cart[key]) {
+        cart[key].quantity -= 1;
+        if (cart[key].quantity <= 0) {
+          delete cart[key];
         }
-      });
-    });
-
-    // Botones de aumentar cantidad
-    document.querySelectorAll('.cart-increase').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const key = this.dataset.key;
-        if (cart[key]) {
-          cart[key].quantity += 1;
-          localStorage.setItem('montfrut_cart', JSON.stringify(cart));
-          updateFloatingCart();
-          updateCartModal();
-          validateTerms();
-        }
-      });
-    });
-
-    // Botones de eliminar producto
-    document.querySelectorAll('.cart-item-remove').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const key = this.dataset.key;
-        delete cart[key];
-        localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+        // localStorage.setItem('montfrut_cart', JSON.stringify(cart));
         updateFloatingCart();
         updateCartModal();
         validateTerms();
-      });
-    });
-  }
-
-  // Función para vaciar el carrito completamente
-  function emptyCart() {
-    if (confirm('Are you sure you want to empty your cart?')) {
-      cart = {};
-      localStorage.removeItem('montfrut_cart');
-      updateFloatingCart();
-      updateCartModal();
-      validateTerms();
+      }
     }
-  }
+    else if (increaseBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = increaseBtn.getAttribute('data-key');
+      if (cart[key]) {
+        cart[key].quantity += 1;
+        // localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+        updateFloatingCart();
+        updateCartModal();
+        validateTerms();
+      }
+    }
+    else if (removeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = removeBtn.getAttribute('data-key');
+      if (cart[key]) {
+        delete cart[key];
+        // localStorage.setItem('montfrut_cart', JSON.stringify(cart));
+        updateFloatingCart();
+        updateCartModal();
+        validateTerms();
+      }
+    }
+  });
 
-  // Event listener para el botón Empty Cart
+  // Event listener para el botón de vaciar carrito
   document.addEventListener('click', function(e) {
     if (e.target && e.target.id === 'empty-cart-btn') {
-      emptyCart();
+      e.preventDefault();
+      e.stopPropagation();
+      if (confirm('Are you sure you want to empty your cart?')) {
+        cart = {};
+        // localStorage.removeItem('montfrut_cart');
+        updateFloatingCart();
+        updateCartModal();
+        validateTerms();
+      }
     }
   });
 
@@ -379,91 +403,140 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------------- TÉRMINOS Y CONDICIONES ---------------- */
   function validateTerms() {
-    const priceTerms = document.getElementById('price-terms').checked;
-    const allergyTerms = document.getElementById('allergy-terms').checked;
-    const hasProducts = Object.keys(cart).length > 0;
+    const priceTerms = document.getElementById('price-terms');
+    const allergyTerms = document.getElementById('allergy-terms');
     const sendBtn = document.getElementById('send-whatsapp');
     const warning = document.getElementById('terms-warning');
+    
+    // Verificar que los elementos existan
+    if (!priceTerms || !allergyTerms || !sendBtn || !warning) {
+      return;
+    }
+    
+    const priceTermsChecked = priceTerms.checked;
+    const allergyTermsChecked = allergyTerms.checked;
+    const hasProducts = Object.keys(cart).length > 0;
 
-    const isValid = priceTerms && allergyTerms && hasProducts;
+    const isValid = priceTermsChecked && allergyTermsChecked && hasProducts;
     sendBtn.disabled = !isValid;
 
-    if (hasProducts && (!priceTerms || !allergyTerms)) {
+    if (hasProducts && (!priceTermsChecked || !allergyTermsChecked)) {
       warning.style.display = 'block';
     } else {
       warning.style.display = 'none';
     }
   }
 
-  document.getElementById('price-terms').addEventListener('change', validateTerms);
-  document.getElementById('allergy-terms').addEventListener('change', validateTerms);
+  // Agregar event listeners solo si los elementos existen
+  const priceTermsEl = document.getElementById('price-terms');
+  const allergyTermsEl = document.getElementById('allergy-terms');
+  
+  if (priceTermsEl) {
+    priceTermsEl.addEventListener('change', validateTerms);
+  }
+  
+  if (allergyTermsEl) {
+    allergyTermsEl.addEventListener('change', validateTerms);
+  }
 
   /* ---------------- ENVÍO A WHATSAPP ---------------- */
-  document.getElementById('send-whatsapp').addEventListener('click', () => {
-    const name = document.getElementById('customer-name').value.trim();
-    const phone = document.getElementById('customer-phone').value.trim();
-    const company = document.getElementById('customer-company').value.trim();
-    const celebration = document.getElementById('customer-celebration').value;
-    const comments = document.getElementById('customer-comments').value.trim();
+  const sendWhatsappBtn = document.getElementById('send-whatsapp');
+  if (sendWhatsappBtn) {
+    sendWhatsappBtn.addEventListener('click', () => {
+      const name = document.getElementById('customer-name').value.trim();
+      const phone = document.getElementById('customer-phone').value.trim();
+      const company = document.getElementById('customer-company').value.trim();
+      const celebration = document.getElementById('customer-celebration').value;
+      const comments = document.getElementById('customer-comments').value.trim();
 
-    if (!name || !phone) {
-      alert('Please complete all required fields.');
-      return;
-    }
+      if (!name || !phone) {
+        alert('Please complete all required fields.');
+        return;
+      }
 
-    // Crear mensaje
-    let message = `Hello, I'm ${name}`;
-    if (company) message += ` from ${company}`;
-    message += `.%0APhone: ${phone}%0A`;
-    if (celebration !== 'No') message += `Celebration: ${celebration}%0A`;
-    message += `%0AI would like to place the following order:%0A%0A`;
+      // Crear mensaje
+      let message = `Hello, I'm ${name}`;
+      if (company) message += ` from ${company}`;
+      message += `.%0APhone: ${phone}%0A`;
+      if (celebration !== 'No') message += `Celebration: ${celebration}%0A`;
+      message += `%0AI would like to place the following order:%0A%0A`;
 
-    let total = 0;
-    Object.values(cart).forEach(item => {
-      const subtotal = item.price * item.quantity;
-      total += subtotal;
+      let total = 0;
+      Object.values(cart).forEach(item => {
+        const subtotal = item.price * item.quantity;
+        total += subtotal;
+        
+        message += `${item.title}`;
+        if (item.optionsText) message += ` (${item.optionsText})`;
+        message += ` - Qty: ${item.quantity} - $${subtotal.toFixed(2)}%0A`;
+      });
+
+      message += `%0A*TOTAL: $${total.toFixed(2)}*`;
       
-      message += `${item.title}`;
-      if (item.optionsText) message += ` (${item.optionsText})`;
-      message += ` - Qty: ${item.quantity} - $${subtotal.toFixed(2)}%0A`;
+      if (comments) {
+        message += `%0A%0AComments: ${comments}`;
+      }
+
+      // Abrir WhatsApp
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${window.whatsappNumber}&text=${message}`;
+      window.open(whatsappUrl, '_blank');
+
+      // Cerrar modal del carrito
+      const cartModalEl = document.getElementById('cartModal');
+      if (cartModalEl) {
+        const cartModalInstance = bootstrap.Modal.getInstance(cartModalEl);
+        if (cartModalInstance) {
+          cartModalInstance.hide();
+        }
+      }
+
+      // Mostrar modal de éxito
+      setTimeout(() => {
+        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+        successModal.show();
+      }, 500);
     });
-
-    message += `%0A*TOTAL: $${total.toFixed(2)}*`;
-    
-    if (comments) {
-      message += `%0A%0AComments: ${comments}`;
-    }
-
-    // Abrir WhatsApp
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${window.whatsappNumber}&text=${message}`;
-    window.open(whatsappUrl, '_blank');
-
-    // Cerrar modal del carrito
-    bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide();
-
-    // Mostrar modal de éxito
-    setTimeout(() => {
-      const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-      successModal.show();
-    }, 500);
-  });
+  }
 
   // Cerrar modal de éxito y limpiar carrito
-  document.getElementById('close-success-modal').addEventListener('click', () => {
-    cart = {};
-    localStorage.removeItem('montfrut_cart');
-    updateFloatingCart();
-    bootstrap.Modal.getInstance(document.getElementById('successModal')).hide();
-    
-    // Limpiar formulario
-    document.getElementById('customer-name').value = '';
-    document.getElementById('customer-phone').value = '';
-    document.getElementById('customer-company').value = '';
-    document.getElementById('customer-celebration').value = 'No';
-    document.getElementById('customer-comments').value = '';
-    document.getElementById('price-terms').checked = false;
-    document.getElementById('allergy-terms').checked = false;
-  });
+  const closeSuccessBtn = document.getElementById('close-success-modal');
+  if (closeSuccessBtn) {
+    closeSuccessBtn.addEventListener('click', () => {
+      cart = {};
+      // localStorage.removeItem('montfrut_cart');
+      updateFloatingCart();
+      
+      const successModalEl = document.getElementById('successModal');
+      if (successModalEl) {
+        const successModalInstance = bootstrap.Modal.getInstance(successModalEl);
+        if (successModalInstance) {
+          successModalInstance.hide();
+        }
+      }
+      
+      // Limpiar formulario
+      const formElements = {
+        'customer-name': '',
+        'customer-phone': '',
+        'customer-company': '',
+        'customer-celebration': 'No',
+        'customer-comments': ''
+      };
+      
+      Object.entries(formElements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.value = value;
+        }
+      });
+      
+      const priceTermsCheck = document.getElementById('price-terms');
+      const allergyTermsCheck = document.getElementById('allergy-terms');
+      
+      if (priceTermsCheck) priceTermsCheck.checked = false;
+      if (allergyTermsCheck) allergyTermsCheck.checked = false;
+    });
+  }
 
   // Inicializar validación de términos
   validateTerms();

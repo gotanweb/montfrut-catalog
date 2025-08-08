@@ -2,11 +2,11 @@
 $products = [
   [
     'id' => 'p001',
-    'title' => 'Dubai Bar Medium',
-    'image' => 'assets/img/dubai-bar.png',
+    'title' => 'Oreo Bar',
+    'image' => 'assets/img/bar-oreo.png',
     'description' => 'Chocolate bar with a pistachio cream and kataifi (shredded phyllo dough) filling, encased in dark chocolate.',
     'category' => 'bars',
-    'tags' => ['dark', 'pistachios'],
+    'tags' => ['dark', 'oreos'],
     'price' => 16.00,
     'options' => [
       [
@@ -22,10 +22,10 @@ $products = [
   ],
   [
     'id' => 'p002',
-    'title' => 'Bombon Box X6',
-    'image' => 'assets/img/bombon-6.jpg',
+    'title' => 'Mendiants',
+    'image' => 'assets/img/mendiants.png',
     'description' => 'Base de chocolate blanco con pistachos y arándanos deshidratados.',
-    'category' => 'bombons',
+    'category' => 'mendiants',
     'tags' => ['white', 'pistachios', 'blueberries'],
     'price' => 23.00,
     'options' => [
